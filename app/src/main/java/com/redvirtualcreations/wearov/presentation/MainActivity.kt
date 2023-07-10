@@ -49,7 +49,6 @@ import androidx.wear.compose.material.Chip
 import androidx.wear.compose.material.ChipDefaults
 import androidx.wear.compose.material.HorizontalPageIndicator
 import androidx.wear.compose.material.Icon
-import androidx.wear.compose.material.MaterialTheme
 import androidx.wear.compose.material.PageIndicatorState
 import androidx.wear.compose.material.PositionIndicator
 import androidx.wear.compose.material.Scaffold
@@ -64,19 +63,15 @@ import androidx.wear.compose.material.curvedText
 import androidx.wear.compose.material.dialog.Alert
 import androidx.wear.compose.material.edgeSwipeToDismiss
 import androidx.wear.compose.material.rememberSwipeToDismissBoxState
-import androidx.wear.compose.material3.ColorScheme
 import com.google.accompanist.permissions.ExperimentalPermissionsApi
 import com.google.accompanist.permissions.rememberMultiplePermissionsState
-import com.google.android.gms.location.CurrentLocationRequest
 import com.google.android.gms.location.FusedLocationProviderClient
-import com.google.android.gms.location.Granularity
 import com.google.android.gms.location.LastLocationRequest
 import com.google.android.gms.location.LocationCallback
 import com.google.android.gms.location.LocationRequest
 import com.google.android.gms.location.LocationResult
 import com.google.android.gms.location.LocationServices
 import com.google.android.gms.location.Priority
-import com.google.android.gms.tasks.CancellationTokenSource
 import com.redvirtualcreations.wearov.R
 import com.redvirtualcreations.wearov.data.ApiManager
 import com.redvirtualcreations.wearov.jsonObjects.VertrektijdenApi
@@ -102,7 +97,7 @@ class MainActivity : ComponentActivity() {
         super.onCreate(savedInstanceState)
         locationProvider = LocationServices.getFusedLocationProviderClient(this)
         setContent {
-            WearApp(this, { ActivityCompat.finishAffinity(this) })
+            WearApp(this) { ActivityCompat.finishAffinity(this) }
         }
     }
 
@@ -142,7 +137,7 @@ class MainActivity : ComponentActivity() {
         locationProvider.removeLocationUpdates(locationCallback)
     }
 
-    fun locationUpdated(location: LatLon) {
+    private fun locationUpdated(location: LatLon) {
         this.location.value = location
     }
 
@@ -162,10 +157,11 @@ class MainActivity : ComponentActivity() {
         if (hasTrain() && pagerState.currentPage == 0) {
             return this.getString(R.string.trains)
         }
+
         return if (hasTrain() && pagerState.currentPage == 1) {
-            return this.getString(R.string.busses)
+            this.getString(R.string.busses)
         } else {
-            return this.getString(R.string.busses)
+            this.getString(R.string.busses)
         }
     }
 }
@@ -248,7 +244,7 @@ fun WearApp(activity: MainActivity, onDismissed: () -> Unit = {}) {
                             state = pagerState,
                             modifier = Modifier.edgeSwipeToDismiss(swipeDismissState)
                         ) { page ->
-                            var train: Boolean = (page == 0 && activity.hasTrain())
+                            val train: Boolean = (page == 0 && activity.hasTrain())
                             apiData.value?.let {
                                 TransitPage(
                                     train = train,
@@ -261,7 +257,7 @@ fun WearApp(activity: MainActivity, onDismissed: () -> Unit = {}) {
                         }
                     }
                 } else {
-                    val allPermissionsRevoked =
+                    @Suppress("UNUSED_VARIABLE") val allPermissionsRevoked =
                         locationPermissionsState.permissions.size == locationPermissionsState.revokedPermissions.size
                     Alert(
                         verticalArrangement = Arrangement.spacedBy(4.dp, Alignment.Top),
@@ -352,6 +348,7 @@ fun TransitPage(
                         DateTimeFormatter.ISO_OFFSET_DATE_TIME
                     )
                     val departureLabel = StringBuilder().append(departure.Destination)
+                    @Suppress("UselessCallOnNotNull")
                     if (!departure.Via.isNullOrEmpty()) {
                         departureLabel.append(stringResource(R.string.via)).append(departure.Via)
                     }
@@ -385,8 +382,10 @@ fun TransitPage(
                         onClick = {})
                 }
             } else if (api.BTMF.size > 0) {
+                var foundTimes = false
                 for (btmf in api.BTMF) {
-                    if (btmf.StationInfo.Distance < 0.2 && btmf.Departures.size > 0) {
+                    if ( btmf.Departures.size > 0) {
+                        foundTimes = true
                         item {
                             Row(
                                 modifier = Modifier
@@ -440,6 +439,30 @@ fun TransitPage(
                                     )
                                 },
                                 onClick = {})
+                        }
+                    }
+                }
+                if (!foundTimes){
+                    item {
+                        Row(
+                            modifier = Modifier
+                                .padding(0.dp, 0.dp, 0.dp, 5.dp)
+                                .fillMaxWidth()
+                                .align(Alignment.TopCenter),
+                            horizontalArrangement = Arrangement.Center
+                        ) {
+
+                            Icon(
+                                painter = painterResource(id = R.drawable.baseline_directions_bus_24),
+                                contentDescription = stringResource(R.string.bus)
+                            )
+
+                            Text(
+                                modifier = Modifier.basicMarquee(),
+                                text = "No departure times found",
+                                softWrap = false,
+                                overflow = TextOverflow.Ellipsis
+                            )
                         }
                     }
                 }
