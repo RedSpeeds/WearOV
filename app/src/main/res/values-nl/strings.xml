@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">WearOV</string>
+    <string name="busses">Bussen</string>
+    <string name="train">Trein</string>
+    <string name="bus">Bus</string>
+    <string name="trains">Treinen</string>
+    <string name="no_station">Kan geen station vinden</string>
+    <string name="permissions_required">Toestemming benodigd</string>
+    <string name="location_permission_explanation">Locatie is nodig om de vertrek tijden van het dichtbijzijnde station te kunnen tonen</string>
+    <string name="location">Locatie</string>
+    <string name="request_permissions_button">Vraag toestemmingen</string>
+    <string name="platform">"Perron "</string>
+    <string name="via">" Via "</string>
+</resources>
