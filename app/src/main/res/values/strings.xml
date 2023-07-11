@@ -15,4 +15,9 @@
     <string name="request_permissions_button">Request permissions</string>
     <string name="platform">"Platform "</string>
     <string name="via">" Via "</string>
+    <string name="network_error">Network error</string>
+    <string name="loading">Loading…</string>
+    <string name="no_connection">No connection</string>
+    <string name="noInternetError">Could not connect to the internet. Check your connection</string>
+    <string name="no_data">No data</string>
 </resources>

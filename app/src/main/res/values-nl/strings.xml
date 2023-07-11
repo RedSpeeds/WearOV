@@ -12,4 +12,9 @@
     <string name="request_permissions_button">Vraag toestemmingen</string>
     <string name="platform">"Perron "</string>
     <string name="via">" Via "</string>
+    <string name="network_error">Netwerk fout</string>
+    <string name="loading">Laden…</string>
+    <string name="no_connection">Geen verbinding</string>
+    <string name="noInternetError">Kan niet verbinden met het internet. Controleer je verbinding</string>
+    <string name="no_data">Geen informatie</string>
 </resources>

@@ -3,6 +3,7 @@ package com.redvirtualcreations.wearov.presentation
 import android.annotation.SuppressLint
 import android.os.Bundle
 import android.os.Looper
+import android.text.format.DateFormat
 import android.util.Log
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
@@ -31,6 +32,7 @@ import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.input.rotary.onRotaryScrollEvent
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextOverflow
@@ -80,7 +82,9 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import java.time.LocalDateTime
+import java.time.ZoneId
 import java.time.format.DateTimeFormatter
+import java.util.Date
 import java.util.concurrent.TimeUnit
 
 class MainActivity : ComponentActivity() {
@@ -99,11 +103,6 @@ class MainActivity : ComponentActivity() {
         setContent {
             WearApp(this) { ActivityCompat.finishAffinity(this) }
         }
-    }
-
-    fun hasTrain(): Boolean {
-        if (apiDataLive.value == null) return false
-        return apiDataLive.value!!.TRAIN.size > 0
     }
 
     @SuppressLint("MissingPermission")
@@ -152,18 +151,7 @@ class MainActivity : ComponentActivity() {
         }
     }
 
-    @OptIn(ExperimentalFoundationApi::class)
-    fun getTransport(pagerState: PagerState): String {
-        if (hasTrain() && pagerState.currentPage == 0) {
-            return this.getString(R.string.trains)
-        }
 
-        return if (hasTrain() && pagerState.currentPage == 1) {
-            this.getString(R.string.busses)
-        } else {
-            this.getString(R.string.busses)
-        }
-    }
 }
 
 
@@ -214,16 +202,18 @@ fun WearApp(activity: MainActivity, onDismissed: () -> Unit = {}) {
                     Scaffold(
                         modifier = Modifier.fillMaxSize(),
                         timeText = {
+                            val textstring = getScaffoldLabel(pagerState = pagerState, api = apiData.value)
                             TimeText(
                                 startLinearContent = {
                                     Text(
-                                        text = activity.getTransport(pagerState),
+                                        text = textstring,
                                         style = leadingTextStyle
                                     )
                                 },
                                 startCurvedContent = {
+
                                     curvedText(
-                                        text = activity.getTransport(pagerState = pagerState),
+                                        text = textstring,
                                         style = CurvedTextStyle(leadingTextStyle)
                                     )
                                 })
@@ -244,7 +234,7 @@ fun WearApp(activity: MainActivity, onDismissed: () -> Unit = {}) {
                             state = pagerState,
                             modifier = Modifier.edgeSwipeToDismiss(swipeDismissState)
                         ) { page ->
-                            val train: Boolean = (page == 0 && activity.hasTrain())
+                            val train: Boolean = (page == 0 && hasTrain(apiData.value))
                             apiData.value?.let {
                                 TransitPage(
                                     train = train,
@@ -302,6 +292,7 @@ fun TransitPage(
     coroutine: CoroutineScope,
     focusRequester: FocusRequester
 ) {
+    val dateFormat = DateFormat.getTimeFormat(LocalContext.current)
     Box(modifier = Modifier.fillMaxSize()) {
         ScalingLazyColumn(
             modifier = Modifier
@@ -318,6 +309,28 @@ fun TransitPage(
             state = listState,
             autoCentering = AutoCenteringParams()
         ) {
+            if (api.apiError){
+                item {
+                    Row(
+                        modifier = Modifier
+                            .padding(0.dp, 0.dp, 0.dp, 5.dp)
+                            .fillMaxWidth()
+                            .align(Alignment.TopCenter),
+                        horizontalArrangement = Arrangement.Center
+                    ) {
+
+                        Icon(
+                            painter = painterResource(id = R.drawable.baseline_signal_wifi_connected_no_internet_4_24),
+                            contentDescription = stringResource(R.string.network_error)
+                        )
+
+                        Text(
+                            text = stringResource(R.string.noInternetError),
+                        )
+                    }
+                }
+                return@ScalingLazyColumn
+            }
             if (train && api.TRAIN.size > 0) {
                 item {
                     Row(
@@ -343,10 +356,9 @@ fun TransitPage(
                 }
                 items(api.TRAIN[0].Departures.size) { index ->
                     val departure = api.TRAIN[0].Departures[index]
-                    val departureTime = LocalDateTime.parse(
-                        departure.PlannedDeparture,
-                        DateTimeFormatter.ISO_OFFSET_DATE_TIME
-                    )
+                    val departureTime = dateFormat.format(
+                        Date.from(LocalDateTime.parse(departure.PlannedDeparture, DateTimeFormatter.ISO_OFFSET_DATE_TIME).atZone(
+                        ZoneId.systemDefault()).toInstant()))
                     val departureLabel = StringBuilder().append(departure.Destination)
                     @Suppress("UselessCallOnNotNull")
                     if (!departure.Via.isNullOrEmpty()) {
@@ -363,11 +375,11 @@ fun TransitPage(
                         icon = {
                             Icon(
                                 painter = painterResource(id = R.drawable.baseline_train_24),
-                                contentDescription = stringResource(R.string.bus)
+                                contentDescription = stringResource(R.string.train)
                             )
                         },
                         secondaryLabel = {
-                            Text(text = "${departureTime.format(DateTimeFormatter.ofPattern("hh:mm"))} "); if (departure.Delay > 0) {
+                            Text(text = "$departureTime "); if (departure.Delay > 0) {
                             Text(
                                 text = "+${departure.Delay} ", color = Color.Red
                             )
@@ -411,10 +423,9 @@ fun TransitPage(
                         val size = if (btmf.Departures.size > 5) 5 else btmf.Departures.size
                         items(size) { index ->
                             val departure = btmf.Departures[index]
-                            val departureTime = LocalDateTime.parse(
-                                departure.ExpectedDeparture,
-                                DateTimeFormatter.ISO_LOCAL_DATE_TIME
-                            )
+                            val departureTime = dateFormat.format(
+                                Date.from(LocalDateTime.parse(departure.PlannedDeparture, DateTimeFormatter.ISO_LOCAL_DATE_TIME).atZone(
+                                    ZoneId.systemDefault()).toInstant()))
                             Chip(
                                 modifier = Modifier.fillMaxWidth(),
                                 label = {
@@ -493,6 +504,35 @@ fun TransitPage(
         }
         LaunchedEffect(Unit) { focusRequester.requestFocus() }
     }
+}
+
+@OptIn(ExperimentalFoundationApi::class)
+@Composable
+fun getScaffoldLabel(pagerState: PagerState, api: VertrektijdenApi?): String {
+    if (api == null){
+        return stringResource(R.string.loading)
+    }
+    if (api.apiError){
+        return stringResource(R.string.no_connection)
+    }
+    if (api.TRAIN.size == 0 && api.BTMF.size == 0){
+        return stringResource(R.string.no_data)
+    }
+    if (hasTrain(api) && pagerState.currentPage == 0) {
+        return stringResource(id = R.string.trains)
+    }
+
+    return if (hasTrain(api) && pagerState.currentPage == 1) {
+        stringResource(R.string.busses)
+    } else {
+        stringResource(R.string.busses)
+    }
+}
+
+@Composable
+fun hasTrain(api: VertrektijdenApi?): Boolean {
+    val len = api?.TRAIN?.size ?: 0
+    return len>0
 }
 
 //endregion

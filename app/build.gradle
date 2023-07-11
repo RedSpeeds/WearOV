@@ -10,10 +10,10 @@ android {
 
     defaultConfig {
         applicationId "com.redvirtualcreations.wearov"
-        minSdk 28
+        minSdk 26
         targetSdk 33
-        versionCode 3
-        versionName "1.2"
+        versionCode 4
+        versionName "1.3"
         vectorDrawables {
             useSupportLibrary true
         }

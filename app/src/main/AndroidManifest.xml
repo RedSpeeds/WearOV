@@ -2,7 +2,7 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android" >
 
     <uses-feature android:name="android.hardware.type.watch" />
-    <uses-feature android:name="android.hardware.location.gps" />
+    <uses-feature android:name="android.hardware.location" />
 
 
     <uses-permission android:name="android.permission.WAKE_LOCK" />

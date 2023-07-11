@@ -7,6 +7,7 @@ import com.redvirtualcreations.wearov.jsonObjects.VertrektijdenApi
 import com.redvirtualcreations.wearov.presentation.LatLon
 import okhttp3.OkHttpClient
 import okhttp3.Request
+import okio.IOException
 
 class ApiManager {
     private val gson: Gson = GsonBuilder().create()
@@ -17,8 +18,11 @@ class ApiManager {
     fun getApiInfo(loc: LatLon): VertrektijdenApi {
         val request = Request.Builder().url("${baseUrl}+${loc.latitude}/${loc.longitude}/0.5")
             .addHeader("X-Vertrektijd-Client-Api-Key", apiKey).get().build()
-        val response = httpClient.newCall(request).execute()
-        return gson.fromJson(response.body?.string(), VertrektijdenApi::class.java)
-
+        return try {
+            val response = httpClient.newCall(request).execute()
+            gson.fromJson(response.body?.string(), VertrektijdenApi::class.java)
+        } catch (exception : IOException){
+            VertrektijdenApi(arrayListOf(), arrayListOf(), true)
+        }
     }
 }
