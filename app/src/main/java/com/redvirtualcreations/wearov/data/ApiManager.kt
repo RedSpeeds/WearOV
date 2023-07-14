@@ -1,7 +1,9 @@
 package com.redvirtualcreations.wearov.data
 
+import android.util.Log
 import com.google.gson.Gson
 import com.google.gson.GsonBuilder
+import com.google.gson.JsonSyntaxException
 import com.redvirtualcreations.wearov.BuildConfig
 import com.redvirtualcreations.wearov.jsonObjects.VertrektijdenApi
 import com.redvirtualcreations.wearov.presentation.LatLon
@@ -16,12 +18,18 @@ class ApiManager {
     private val apiKey = BuildConfig.apiKey
 
     fun getApiInfo(loc: LatLon): VertrektijdenApi {
+        var jsonResponse : String = "";
         val request = Request.Builder().url("${baseUrl}+${loc.latitude}/${loc.longitude}/0.5")
             .addHeader("X-Vertrektijd-Client-Api-Key", apiKey).get().build()
         return try {
             val response = httpClient.newCall(request).execute()
-            gson.fromJson(response.body?.string(), VertrektijdenApi::class.java)
+            jsonResponse = response.body?.string().toString()
+            jsonResponse = jsonResponse.replace("\"Station_Info\":[]", "\"Station_Info\":{}") //FIXME Stupid fix in the event the API returns invalid data. Long term solution is finding a better API
+            gson.fromJson(jsonResponse, VertrektijdenApi::class.java)
         } catch (exception : IOException){
+            VertrektijdenApi(arrayListOf(), arrayListOf(), true)
+        } catch (exception : JsonSyntaxException){
+            Log.e("VertrekAPI", "Encountered malformed JSON! RAW: ${jsonResponse}", exception.cause)
             VertrektijdenApi(arrayListOf(), arrayListOf(), true)
         }
     }
