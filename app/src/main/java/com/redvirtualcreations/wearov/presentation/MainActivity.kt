@@ -1,5 +1,6 @@
 package com.redvirtualcreations.wearov.presentation
 
+import android.Manifest
 import android.annotation.SuppressLint
 import android.os.Bundle
 import android.os.Looper
@@ -78,6 +79,7 @@ import com.redvirtualcreations.wearov.R
 import com.redvirtualcreations.wearov.data.ApiManager
 import com.redvirtualcreations.wearov.jsonObjects.VertrektijdenApi
 import com.redvirtualcreations.wearov.presentation.theme.WearOVTheme
+import com.vmadalin.easypermissions.EasyPermissions
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
@@ -103,6 +105,11 @@ class MainActivity : ComponentActivity() {
         setContent {
             WearApp(this) { ActivityCompat.finishAffinity(this) }
         }
+    }
+
+    override fun onResume() {
+        super.onResume()
+        updateNow()
     }
 
     @SuppressLint("MissingPermission")
@@ -141,12 +148,14 @@ class MainActivity : ComponentActivity() {
     }
 
     @SuppressLint("MissingPermission")
-    fun updateNow() {
-        locationProvider.getLastLocation(
-            LastLocationRequest.Builder().build()
-        ).addOnSuccessListener { loc ->
-            loc?.let {
-                locationUpdated(LatLon(loc.latitude, loc.longitude))
+    private fun updateNow() {
+        if (EasyPermissions.hasPermissions(this, Manifest.permission.ACCESS_COARSE_LOCATION, Manifest.permission.ACCESS_FINE_LOCATION)) {
+            locationProvider.getLastLocation(
+                LastLocationRequest.Builder().build()
+            ).addOnSuccessListener { loc ->
+                loc?.let {
+                    locationUpdated(LatLon(loc.latitude, loc.longitude))
+                }
             }
         }
     }

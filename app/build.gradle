@@ -12,8 +12,8 @@ android {
         applicationId "com.redvirtualcreations.wearov"
         minSdk 26
         targetSdk 33
-        versionCode 6
-        versionName "1.4.1"
+        versionCode 7
+        versionName "1.4.2"
         vectorDrawables {
             useSupportLibrary true
         }
@@ -81,5 +81,6 @@ dependencies {
     implementation("com.squareup.okhttp3:okhttp:4.11.0")
     implementation "androidx.lifecycle:lifecycle-livedata-ktx:2.6.1"
     implementation "androidx.compose.runtime:runtime-livedata:1.4.3"
+    implementation 'com.vmadalin:easypermissions-ktx:1.0.0'
 
 }
