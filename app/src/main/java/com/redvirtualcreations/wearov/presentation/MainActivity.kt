@@ -8,7 +8,6 @@ import android.text.format.DateFormat
 import android.util.Log
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
-import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.basicMarquee
 import androidx.compose.foundation.focusable
 import androidx.compose.foundation.gestures.scrollBy
@@ -44,10 +43,13 @@ import androidx.lifecycle.lifecycleScope
 import androidx.lifecycle.liveData
 import androidx.lifecycle.switchMap
 import androidx.wear.compose.foundation.CurvedTextStyle
+import androidx.wear.compose.foundation.SwipeToDismissValue
+import androidx.wear.compose.foundation.edgeSwipeToDismiss
 import androidx.wear.compose.foundation.lazy.AutoCenteringParams
 import androidx.wear.compose.foundation.lazy.ScalingLazyColumn
 import androidx.wear.compose.foundation.lazy.ScalingLazyListState
 import androidx.wear.compose.foundation.lazy.rememberScalingLazyListState
+import androidx.wear.compose.foundation.rememberSwipeToDismissBoxState
 import androidx.wear.compose.material.Chip
 import androidx.wear.compose.material.ChipDefaults
 import androidx.wear.compose.material.HorizontalPageIndicator
@@ -56,7 +58,6 @@ import androidx.wear.compose.material.PageIndicatorState
 import androidx.wear.compose.material.PositionIndicator
 import androidx.wear.compose.material.Scaffold
 import androidx.wear.compose.material.SwipeToDismissBox
-import androidx.wear.compose.material.SwipeToDismissValue
 import androidx.wear.compose.material.Text
 import androidx.wear.compose.material.TimeText
 import androidx.wear.compose.material.TimeTextDefaults
@@ -64,8 +65,6 @@ import androidx.wear.compose.material.Vignette
 import androidx.wear.compose.material.VignettePosition
 import androidx.wear.compose.material.curvedText
 import androidx.wear.compose.material.dialog.Alert
-import androidx.wear.compose.material.edgeSwipeToDismiss
-import androidx.wear.compose.material.rememberSwipeToDismissBoxState
 import com.google.accompanist.permissions.ExperimentalPermissionsApi
 import com.google.accompanist.permissions.rememberMultiplePermissionsState
 import com.google.android.gms.location.FusedLocationProviderClient
@@ -75,6 +74,7 @@ import com.google.android.gms.location.LocationRequest
 import com.google.android.gms.location.LocationResult
 import com.google.android.gms.location.LocationServices
 import com.google.android.gms.location.Priority
+import com.google.firebase.FirebaseApp
 import com.redvirtualcreations.wearov.R
 import com.redvirtualcreations.wearov.data.ApiManager
 import com.redvirtualcreations.wearov.jsonObjects.VertrektijdenApi
@@ -90,7 +90,7 @@ import java.util.Date
 import java.util.concurrent.TimeUnit
 
 class MainActivity : ComponentActivity() {
-    lateinit var locationCallback: LocationCallback
+    private lateinit var locationCallback: LocationCallback
     lateinit var locationProvider: FusedLocationProviderClient
     var location: MutableLiveData<LatLon> = MutableLiveData()
     var apiDataLive = location.switchMap { loc ->
@@ -102,6 +102,7 @@ class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         locationProvider = LocationServices.getFusedLocationProviderClient(this)
+        FirebaseApp.initializeApp(this)
         setContent {
             WearApp(this) { ActivityCompat.finishAffinity(this) }
         }
@@ -164,15 +165,14 @@ class MainActivity : ComponentActivity() {
 }
 
 
-@OptIn(ExperimentalFoundationApi::class)
 private class HorizontalPagerState(state: PagerState) : PageIndicatorState {
     override val pageCount = state.pageCount
     override val pageOffset = state.currentPageOffsetFraction
     override val selectedPage = state.currentPage
 }
 
-//region Compose garbage
-@OptIn(ExperimentalFoundationApi::class, ExperimentalPermissionsApi::class)
+//region Compose
+@OptIn(ExperimentalPermissionsApi::class)
 @Composable
 fun WearApp(activity: MainActivity, onDismissed: () -> Unit = {}) {
     val apiData = activity.apiDataLive.observeAsState()
@@ -180,8 +180,8 @@ fun WearApp(activity: MainActivity, onDismissed: () -> Unit = {}) {
         rememberPagerState(pageCount = { if (apiData.value == null) 1 else if (apiData.value!!.TRAIN.size > 0) 2 else 1 })
     val locationPermissionsState = rememberMultiplePermissionsState(
         permissions = listOf(
-            android.Manifest.permission.ACCESS_COARSE_LOCATION,
-            android.Manifest.permission.ACCESS_FINE_LOCATION
+            Manifest.permission.ACCESS_COARSE_LOCATION,
+            Manifest.permission.ACCESS_FINE_LOCATION
         )
     )
     val swipeDismissState = rememberSwipeToDismissBoxState()
@@ -211,18 +211,18 @@ fun WearApp(activity: MainActivity, onDismissed: () -> Unit = {}) {
                     Scaffold(
                         modifier = Modifier.fillMaxSize(),
                         timeText = {
-                            val textstring = getScaffoldLabel(pagerState = pagerState, api = apiData.value)
+                            val textString = getScaffoldLabel(pagerState = pagerState, api = apiData.value)
                             TimeText(
                                 startLinearContent = {
                                     Text(
-                                        text = textstring,
+                                        text = textString,
                                         style = leadingTextStyle
                                     )
                                 },
                                 startCurvedContent = {
 
                                     curvedText(
-                                        text = textstring,
+                                        text = textString,
                                         style = CurvedTextStyle(leadingTextStyle)
                                     )
                                 })
@@ -292,7 +292,6 @@ fun WearApp(activity: MainActivity, onDismissed: () -> Unit = {}) {
     }
 }
 
-@OptIn(ExperimentalFoundationApi::class)
 @Composable
 fun TransitPage(
     train: Boolean,
@@ -515,7 +514,6 @@ fun TransitPage(
     }
 }
 
-@OptIn(ExperimentalFoundationApi::class)
 @Composable
 fun getScaffoldLabel(pagerState: PagerState, api: VertrektijdenApi?): String {
     if (api == null){
