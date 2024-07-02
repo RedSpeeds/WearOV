@@ -13,10 +13,14 @@ import androidx.compose.foundation.focusable
 import androidx.compose.foundation.gestures.scrollBy
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.wrapContentSize
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.pager.HorizontalPager
 import androidx.compose.foundation.pager.PagerState
 import androidx.compose.foundation.pager.rememberPagerState
@@ -35,6 +39,7 @@ import androidx.compose.ui.input.rotary.onRotaryScrollEvent
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.core.app.ActivityCompat
@@ -150,7 +155,12 @@ class MainActivity : ComponentActivity() {
 
     @SuppressLint("MissingPermission")
     private fun updateNow() {
-        if (EasyPermissions.hasPermissions(this, Manifest.permission.ACCESS_COARSE_LOCATION, Manifest.permission.ACCESS_FINE_LOCATION)) {
+        if (EasyPermissions.hasPermissions(
+                this,
+                Manifest.permission.ACCESS_COARSE_LOCATION,
+                Manifest.permission.ACCESS_FINE_LOCATION
+            )
+        ) {
             locationProvider.getLastLocation(
                 LastLocationRequest.Builder().build()
             ).addOnSuccessListener { loc ->
@@ -211,7 +221,8 @@ fun WearApp(activity: MainActivity, onDismissed: () -> Unit = {}) {
                     Scaffold(
                         modifier = Modifier.fillMaxSize(),
                         timeText = {
-                            val textString = getScaffoldLabel(pagerState = pagerState, api = apiData.value)
+                            val textString =
+                                getScaffoldLabel(pagerState = pagerState, api = apiData.value)
                             TimeText(
                                 startLinearContent = {
                                     Text(
@@ -259,6 +270,7 @@ fun WearApp(activity: MainActivity, onDismissed: () -> Unit = {}) {
                     @Suppress("UNUSED_VARIABLE") val allPermissionsRevoked =
                         locationPermissionsState.permissions.size == locationPermissionsState.revokedPermissions.size
                     Alert(
+                        contentPadding = PaddingValues(start = 10.dp, end = 10.dp, top = 24.dp, bottom = 52.dp),
                         verticalArrangement = Arrangement.spacedBy(4.dp, Alignment.Top),
                         icon = {
                             Icon(
@@ -266,9 +278,18 @@ fun WearApp(activity: MainActivity, onDismissed: () -> Unit = {}) {
                                 contentDescription = stringResource(R.string.location)
                             )
                         },
-                        title = { Text(stringResource(R.string.permissions_required)) },
+                        title = {
+                            Text(
+                                text = stringResource(R.string.permissions_required),
+                                textAlign = TextAlign.Center,
+
+                            )
+                        },
                         message = {
-                            Text(text = stringResource(R.string.location_permission_explanation))
+                            Text(
+                                text = stringResource(R.string.location_permission_explanation),
+                                textAlign = TextAlign.Center
+                            )
                         }) {
                         item {
                             Chip(
@@ -278,7 +299,8 @@ fun WearApp(activity: MainActivity, onDismissed: () -> Unit = {}) {
                                     Text(
                                         text = stringResource(R.string.request_permissions_button)
                                     )
-                                })
+                                }
+                            )
                         }
                     }
                 }
@@ -317,23 +339,25 @@ fun TransitPage(
             state = listState,
             autoCentering = AutoCenteringParams()
         ) {
-            if (api.apiError){
+            if (api.apiError) {
                 item {
-                    Row(
+                    Column(
                         modifier = Modifier
                             .padding(0.dp, 0.dp, 0.dp, 5.dp)
                             .fillMaxWidth()
                             .align(Alignment.TopCenter),
-                        horizontalArrangement = Arrangement.Center
+                        horizontalAlignment = Alignment.CenterHorizontally
                     ) {
 
                         Icon(
                             painter = painterResource(id = R.drawable.baseline_signal_wifi_connected_no_internet_4_24),
-                            contentDescription = stringResource(R.string.network_error)
+                            contentDescription = stringResource(R.string.network_error),
+                            modifier = Modifier.padding(bottom = 5.dp)
                         )
 
                         Text(
                             text = stringResource(R.string.noInternetError),
+                            textAlign = TextAlign.Center
                         )
                     }
                 }
@@ -365,8 +389,15 @@ fun TransitPage(
                 items(api.TRAIN[0].Departures.size) { index ->
                     val departure = api.TRAIN[0].Departures[index]
                     val departureTime = dateFormat.format(
-                        Date.from(LocalDateTime.parse(departure.PlannedDeparture, DateTimeFormatter.ISO_OFFSET_DATE_TIME).atZone(
-                        ZoneId.systemDefault()).toInstant()))
+                        Date.from(
+                            LocalDateTime.parse(
+                                departure.PlannedDeparture,
+                                DateTimeFormatter.ISO_OFFSET_DATE_TIME
+                            ).atZone(
+                                ZoneId.systemDefault()
+                            ).toInstant()
+                        )
+                    )
                     val departureLabel = StringBuilder().append(departure.Destination)
                     @Suppress("UselessCallOnNotNull")
                     if (!departure.Via.isNullOrEmpty()) {
@@ -404,7 +435,7 @@ fun TransitPage(
             } else if (api.BTMF.size > 0) {
                 var foundTimes = false
                 for (btmf in api.BTMF) {
-                    if ( btmf.Departures.size > 0) {
+                    if (btmf.Departures.size > 0) {
                         foundTimes = true
                         item {
                             Row(
@@ -432,8 +463,15 @@ fun TransitPage(
                         items(size) { index ->
                             val departure = btmf.Departures[index]
                             val departureTime = dateFormat.format(
-                                Date.from(LocalDateTime.parse(departure.PlannedDeparture, DateTimeFormatter.ISO_LOCAL_DATE_TIME).atZone(
-                                    ZoneId.systemDefault()).toInstant()))
+                                Date.from(
+                                    LocalDateTime.parse(
+                                        departure.PlannedDeparture,
+                                        DateTimeFormatter.ISO_LOCAL_DATE_TIME
+                                    ).atZone(
+                                        ZoneId.systemDefault()
+                                    ).toInstant()
+                                )
+                            )
                             Chip(
                                 modifier = Modifier.fillMaxWidth(),
                                 label = {
@@ -461,7 +499,7 @@ fun TransitPage(
                         }
                     }
                 }
-                if (!foundTimes){
+                if (!foundTimes) {
                     item {
                         Row(
                             modifier = Modifier
@@ -516,13 +554,13 @@ fun TransitPage(
 
 @Composable
 fun getScaffoldLabel(pagerState: PagerState, api: VertrektijdenApi?): String {
-    if (api == null){
+    if (api == null) {
         return stringResource(R.string.loading)
     }
-    if (api.apiError){
+    if (api.apiError) {
         return stringResource(R.string.no_connection)
     }
-    if (api.TRAIN.size == 0 && api.BTMF.size == 0){
+    if (api.TRAIN.size == 0 && api.BTMF.size == 0) {
         return stringResource(R.string.no_data)
     }
     if (hasTrain(api) && pagerState.currentPage == 0) {
@@ -539,7 +577,7 @@ fun getScaffoldLabel(pagerState: PagerState, api: VertrektijdenApi?): String {
 @Composable
 fun hasTrain(api: VertrektijdenApi?): Boolean {
     val len = api?.TRAIN?.size ?: 0
-    return len>0
+    return len > 0
 }
 
 //endregion

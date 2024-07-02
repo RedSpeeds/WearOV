@@ -19,16 +19,23 @@ class ApiManager {
     private val apiKey = BuildConfig.apiKey
 
     fun getApiInfo(loc: LatLon): VertrektijdenApi {
+        Log.d("APIManager", "Updating info")
         var jsonResponse = ""
         val request = Request.Builder().url("${baseUrl}+${loc.latitude}/${loc.longitude}/0.5")
             .addHeader("X-Vertrektijd-Client-Api-Key", apiKey).get().build()
         return try {
             val response = httpClient.newCall(request).execute()
+            Log.d("APIManager", "Response code: ${response.code}, ${response.message}")
+            if (response.code != 200){
+                response.close()
+                return VertrektijdenApi(arrayListOf(), arrayListOf(), true)
+            }
             jsonResponse = response.body?.string().toString()
             jsonResponse = jsonResponse.replace(
                 "\"Station_Info\":[]",
                 "\"Station_Info\":{}"
             ) //FIXME Stupid fix in the event the API returns invalid data. Long term solution is finding a better API
+            Log.d("APIManager", "Raw response: ${response.body?.string().toString()}")
             gson.fromJson(jsonResponse, VertrektijdenApi::class.java)
         } catch (exception: IOException) {
             VertrektijdenApi(arrayListOf(), arrayListOf(), true)

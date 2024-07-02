@@ -9,7 +9,7 @@
     <string name="permissions_required">Toestemming benodigd</string>
     <string name="location_permission_explanation">Locatie is nodig om de vertrek tijden van het dichtbijzijnde station te kunnen tonen</string>
     <string name="location">Locatie</string>
-    <string name="request_permissions_button">Vraag toestemmingen</string>
+    <string name="request_permissions_button">Geef toestemming</string>
     <string name="platform">"Perron "</string>
     <string name="via">" Via "</string>
     <string name="network_error">Netwerk fout</string>
