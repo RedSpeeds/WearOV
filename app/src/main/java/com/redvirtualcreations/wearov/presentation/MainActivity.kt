@@ -24,6 +24,8 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.pager.HorizontalPager
 import androidx.compose.foundation.pager.PagerState
 import androidx.compose.foundation.pager.rememberPagerState
+import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.pulltorefresh.PullToRefreshBox
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
@@ -104,6 +106,7 @@ class MainActivity : ComponentActivity() {
         }
     }
     private val apiManager = ApiManager()
+    var isRefreshing = false;
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         locationProvider = LocationServices.getFusedLocationProviderClient(this)
@@ -137,9 +140,9 @@ class MainActivity : ComponentActivity() {
         }
         locationCallback.let {
             val locationRequest: LocationRequest =
-                LocationRequest.Builder(TimeUnit.SECONDS.toMillis(30))
+                LocationRequest.Builder(TimeUnit.SECONDS.toMillis(60))
                     .setPriority(Priority.PRIORITY_HIGH_ACCURACY)
-                    .setMinUpdateIntervalMillis(TimeUnit.SECONDS.toMillis(15)).build()
+                    .setMinUpdateIntervalMillis(TimeUnit.SECONDS.toMillis(50)).build()
             locationProvider.requestLocationUpdates(locationRequest, it, Looper.getMainLooper())
         }
         updateNow()
@@ -154,7 +157,8 @@ class MainActivity : ComponentActivity() {
     }
 
     @SuppressLint("MissingPermission")
-    private fun updateNow() {
+    fun updateNow() {
+        isRefreshing = true
         if (EasyPermissions.hasPermissions(
                 this,
                 Manifest.permission.ACCESS_COARSE_LOCATION,
@@ -166,6 +170,7 @@ class MainActivity : ComponentActivity() {
             ).addOnSuccessListener { loc ->
                 loc?.let {
                     locationUpdated(LatLon(loc.latitude, loc.longitude))
+                    isRefreshing = false
                 }
             }
         }
@@ -261,7 +266,8 @@ fun WearApp(activity: MainActivity, onDismissed: () -> Unit = {}) {
                                     api = it,
                                     listState,
                                     coroutineScope,
-                                    focusRequester
+                                    focusRequester,
+                                    activity
                                 )
                             }
                         }
@@ -314,16 +320,18 @@ fun WearApp(activity: MainActivity, onDismissed: () -> Unit = {}) {
     }
 }
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun TransitPage(
     train: Boolean,
     api: VertrektijdenApi,
     listState: ScalingLazyListState,
     coroutine: CoroutineScope,
-    focusRequester: FocusRequester
+    focusRequester: FocusRequester,
+    activity: MainActivity
 ) {
     val dateFormat = DateFormat.getTimeFormat(LocalContext.current)
-    Box(modifier = Modifier.fillMaxSize()) {
+    PullToRefreshBox(modifier = Modifier.fillMaxSize(), isRefreshing = activity.isRefreshing, onRefresh = {activity.updateNow()}) {
         ScalingLazyColumn(
             modifier = Modifier
                 .fillMaxWidth()

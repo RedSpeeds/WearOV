@@ -11,14 +11,19 @@ import com.redvirtualcreations.wearov.presentation.LatLon
 import okhttp3.OkHttpClient
 import okhttp3.Request
 import okio.IOException
+import java.lang.NumberFormatException
 
 class ApiManager {
     private val gson: Gson = GsonBuilder().create()
     private val httpClient: OkHttpClient = OkHttpClient()
     private val baseUrl = "https://api.vertrektijd.info/departures/_geo/"
     private val apiKey = BuildConfig.apiKey
+    private var updating = false
+    private var lastInfo: VertrektijdenApi = VertrektijdenApi(arrayListOf(), arrayListOf(), true);
 
     fun getApiInfo(loc: LatLon): VertrektijdenApi {
+        if(updating) return lastInfo
+        updating = true
         Log.d("APIManager", "Updating info")
         var jsonResponse = ""
         val request = Request.Builder().url("${baseUrl}+${loc.latitude}/${loc.longitude}/0.5")
@@ -35,18 +40,28 @@ class ApiManager {
                 "\"Station_Info\":[]",
                 "\"Station_Info\":{}"
             ) //FIXME Stupid fix in the event the API returns invalid data. Long term solution is finding a better API
-            Log.d("APIManager", "Raw response: ${response.body?.string().toString()}")
-            gson.fromJson(jsonResponse, VertrektijdenApi::class.java)
+            Log.d("APIManager", "Raw response: $jsonResponse")
+            response.close()
+            val data = gson.fromJson(jsonResponse, VertrektijdenApi::class.java)
+            lastInfo = data
+            return data
         } catch (exception: IOException) {
             VertrektijdenApi(arrayListOf(), arrayListOf(), true)
         } catch (exception: JsonSyntaxException) {
             Log.e("VertrekAPI", "Encountered malformed JSON! RAW: $jsonResponse", exception.cause)
             FirebaseCrashlytics.getInstance().recordException(exception)
             VertrektijdenApi(arrayListOf(), arrayListOf(), true)
-        } catch (exception: Exception) {
+        }
+        catch (exception: NumberFormatException){
+            Log.e("VertrekAPI", "API sent invalid strings")
+            return lastInfo
+        }
+        catch (exception: Exception) {
             Log.e("VertrekAPI", "Encountered unknown exception!", exception)
             FirebaseCrashlytics.getInstance().recordException(exception)
             VertrektijdenApi(arrayListOf(), arrayListOf(), true)
+        } finally {
+            updating = false
         }
     }
 }

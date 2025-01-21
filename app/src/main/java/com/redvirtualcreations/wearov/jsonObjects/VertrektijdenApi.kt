@@ -5,7 +5,7 @@ import com.google.gson.annotations.SerializedName
 data class VertrektijdenApi(
     @SerializedName("TRAIN" ) var TRAIN : ArrayList<TRAIN> = arrayListOf(),
     @SerializedName("BTMF"  ) var BTMF  : ArrayList<BTMF>  = arrayListOf(),
-    var apiError : Boolean = false
+    @Transient var apiError : Boolean = false
 )
 
 data class StationInfo (
