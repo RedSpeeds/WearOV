@@ -3,6 +3,7 @@ package com.redvirtualcreations.wearov.presentation
 import android.Manifest
 import android.annotation.SuppressLint
 import android.os.Bundle
+import android.os.Handler
 import android.os.Looper
 import android.text.format.DateFormat
 import android.util.Log
@@ -24,6 +25,7 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.pager.HorizontalPager
 import androidx.compose.foundation.pager.PagerState
 import androidx.compose.foundation.pager.rememberPagerState
+import androidx.compose.material3.Button
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.pulltorefresh.PullToRefreshBox
 import androidx.compose.runtime.Composable
@@ -45,6 +47,7 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.core.app.ActivityCompat
+import androidx.core.os.postDelayed
 import androidx.lifecycle.MutableLiveData
 import androidx.lifecycle.lifecycleScope
 import androidx.lifecycle.liveData
@@ -89,6 +92,7 @@ import com.redvirtualcreations.wearov.presentation.theme.WearOVTheme
 import com.vmadalin.easypermissions.EasyPermissions
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import java.time.LocalDateTime
 import java.time.ZoneId
@@ -106,13 +110,20 @@ class MainActivity : ComponentActivity() {
         }
     }
     private val apiManager = ApiManager()
-    var isRefreshing = false;
+    var isRefreshing = false
+    var hasLoaded = false
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         locationProvider = LocationServices.getFusedLocationProviderClient(this)
         FirebaseApp.initializeApp(this)
         setContent {
             WearApp(this) { ActivityCompat.finishAffinity(this) }
+        }
+        lifecycleScope.launch {
+            while (apiDataLive.value == null || apiDataLive.value!!.apiError) {
+                updateNow()
+                delay(3000)
+            }
         }
     }
 
@@ -367,6 +378,7 @@ fun TransitPage(
                             text = stringResource(R.string.noInternetError),
                             textAlign = TextAlign.Center
                         )
+                        Button({activity.updateNow()}) { Icon(painter = painterResource(R.drawable.baseline_autorenew_24), contentDescription = "Refresh") }
                     }
                 }
                 return@ScalingLazyColumn

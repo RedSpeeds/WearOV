@@ -19,9 +19,9 @@ class ApiManager {
     private val baseUrl = "https://api.vertrektijd.info/departures/_geo/"
     private val apiKey = BuildConfig.apiKey
     private var updating = false
-    private var lastInfo: VertrektijdenApi = VertrektijdenApi(arrayListOf(), arrayListOf(), true);
+    private var lastInfo: VertrektijdenApi? = null;
 
-    fun getApiInfo(loc: LatLon): VertrektijdenApi {
+    fun getApiInfo(loc: LatLon): VertrektijdenApi? {
         if(updating) return lastInfo
         updating = true
         Log.d("APIManager", "Updating info")
@@ -46,6 +46,7 @@ class ApiManager {
             lastInfo = data
             return data
         } catch (exception: IOException) {
+            Log.d("VertrekAPI", "IO Exception", exception.cause)
             VertrektijdenApi(arrayListOf(), arrayListOf(), true)
         } catch (exception: JsonSyntaxException) {
             Log.e("VertrekAPI", "Encountered malformed JSON! RAW: $jsonResponse", exception.cause)
