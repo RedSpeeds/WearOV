@@ -2,8 +2,10 @@ package com.redvirtualcreations.wearov.presentation
 
 import android.Manifest
 import android.annotation.SuppressLint
+import android.content.Context
+import android.net.ConnectivityManager
+import android.net.NetworkCapabilities
 import android.os.Bundle
-import android.os.Handler
 import android.os.Looper
 import android.text.format.DateFormat
 import android.util.Log
@@ -13,15 +15,12 @@ import androidx.compose.foundation.basicMarquee
 import androidx.compose.foundation.focusable
 import androidx.compose.foundation.gestures.scrollBy
 import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.wrapContentSize
-import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.pager.HorizontalPager
 import androidx.compose.foundation.pager.PagerState
 import androidx.compose.foundation.pager.rememberPagerState
@@ -47,7 +46,6 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.core.app.ActivityCompat
-import androidx.core.os.postDelayed
 import androidx.lifecycle.MutableLiveData
 import androidx.lifecycle.lifecycleScope
 import androidx.lifecycle.liveData
@@ -75,6 +73,7 @@ import androidx.wear.compose.material.Vignette
 import androidx.wear.compose.material.VignettePosition
 import androidx.wear.compose.material.curvedText
 import androidx.wear.compose.material.dialog.Alert
+import androidx.wear.compose.material3.MaterialTheme
 import com.google.accompanist.permissions.ExperimentalPermissionsApi
 import com.google.accompanist.permissions.rememberMultiplePermissionsState
 import com.google.android.gms.location.FusedLocationProviderClient
@@ -104,9 +103,15 @@ class MainActivity : ComponentActivity() {
     private lateinit var locationCallback: LocationCallback
     lateinit var locationProvider: FusedLocationProviderClient
     var location: MutableLiveData<LatLon> = MutableLiveData()
+
+    private var isLocationListening = true;
     var apiDataLive = location.switchMap { loc ->
         liveData(context = this.lifecycleScope.coroutineContext + Dispatchers.IO) {
-            emit(apiManager.getApiInfo(loc))
+            val result = apiManager.getApiInfo(loc);
+            emit(result)
+            if(result?.apiError ?: true){
+                stopLocationUpdates()
+            }
         }
     }
     private val apiManager = ApiManager()
@@ -120,7 +125,7 @@ class MainActivity : ComponentActivity() {
             WearApp(this) { ActivityCompat.finishAffinity(this) }
         }
         lifecycleScope.launch {
-            while (apiDataLive.value == null || apiDataLive.value!!.apiError) {
+            while (apiDataLive.value == null) {
                 updateNow()
                 delay(3000)
             }
@@ -144,6 +149,7 @@ class MainActivity : ComponentActivity() {
                         location.value = LatLon(lat, long)
 
                     }
+                    isLocationListening = true
                 }.addOnFailureListener {
                     Log.e("Location_error", "${it.message}")
                 }
@@ -161,6 +167,13 @@ class MainActivity : ComponentActivity() {
 
     fun stopLocationUpdates() {
         locationProvider.removeLocationUpdates(locationCallback)
+        isLocationListening = false
+    }
+
+    fun resumeLocationUpdates() {
+        if (!isLocationListening) {
+            startLocationUpdates()
+        }
     }
 
     private fun locationUpdated(location: LatLon) {
@@ -198,6 +211,7 @@ private class HorizontalPagerState(state: PagerState) : PageIndicatorState {
 }
 
 //region Compose
+
 @OptIn(ExperimentalPermissionsApi::class)
 @Composable
 fun WearApp(activity: MainActivity, onDismissed: () -> Unit = {}) {
@@ -224,7 +238,7 @@ fun WearApp(activity: MainActivity, onDismissed: () -> Unit = {}) {
          * see d.android.com/wear/compose.
          */
         val leadingTextStyle =
-            TimeTextDefaults.timeTextStyle(color = androidx.wear.compose.material3.MaterialTheme.colorScheme.primary)
+            TimeTextDefaults.timeTextStyle(color = MaterialTheme.colorScheme.primary)
         SwipeToDismissBox(state = swipeDismissState) { bg ->
             if (!bg) {
                 if (locationPermissionsState.allPermissionsGranted) {
@@ -284,7 +298,7 @@ fun WearApp(activity: MainActivity, onDismissed: () -> Unit = {}) {
                         }
                     }
                 } else {
-                    @Suppress("UNUSED_VARIABLE") val allPermissionsRevoked =
+                    @Suppress("unused") val allPermissionsRevoked =
                         locationPermissionsState.permissions.size == locationPermissionsState.revokedPermissions.size
                     Alert(
                         contentPadding = PaddingValues(start = 10.dp, end = 10.dp, top = 24.dp, bottom = 52.dp),
@@ -342,7 +356,7 @@ fun TransitPage(
     activity: MainActivity
 ) {
     val dateFormat = DateFormat.getTimeFormat(LocalContext.current)
-    PullToRefreshBox(modifier = Modifier.fillMaxSize(), isRefreshing = activity.isRefreshing, onRefresh = {activity.updateNow()}) {
+    PullToRefreshBox(modifier = Modifier.fillMaxSize(), isRefreshing = activity.isRefreshing, onRefresh = {activity.updateNow(); activity.resumeLocationUpdates()}) {
         ScalingLazyColumn(
             modifier = Modifier
                 .fillMaxWidth()
@@ -373,12 +387,18 @@ fun TransitPage(
                             contentDescription = stringResource(R.string.network_error),
                             modifier = Modifier.padding(bottom = 5.dp)
                         )
-
-                        Text(
-                            text = stringResource(R.string.noInternetError),
-                            textAlign = TextAlign.Center
-                        )
-                        Button({activity.updateNow()}) { Icon(painter = painterResource(R.drawable.baseline_autorenew_24), contentDescription = "Refresh") }
+                        if(isInternetAvailable(activity)){
+                            Text(
+                                text = stringResource(R.string.server_down),
+                                textAlign = TextAlign.Center
+                            )
+                        }else {
+                            Text(
+                                text = stringResource(R.string.noInternetError),
+                                textAlign = TextAlign.Center
+                            )
+                        }
+                        Button({activity.updateNow(); activity.resumeLocationUpdates()}) { Icon(painter = painterResource(R.drawable.baseline_autorenew_24), contentDescription = "Refresh") }
                     }
                 }
                 return@ScalingLazyColumn
@@ -598,6 +618,20 @@ fun getScaffoldLabel(pagerState: PagerState, api: VertrektijdenApi?): String {
 fun hasTrain(api: VertrektijdenApi?): Boolean {
     val len = api?.TRAIN?.size ?: 0
     return len > 0
+}
+
+fun isInternetAvailable(context: Context): Boolean{
+    var result: Boolean
+    val connectivityManager = context.getSystemService(Context.CONNECTIVITY_SERVICE) as ConnectivityManager
+    val networkCapabilities = connectivityManager.activeNetwork ?: return false
+    val actNw  = connectivityManager.getNetworkCapabilities(networkCapabilities) ?: return false
+    result = when {
+        actNw.hasTransport(NetworkCapabilities.TRANSPORT_WIFI) -> true
+        actNw.hasTransport(NetworkCapabilities.TRANSPORT_CELLULAR) -> true
+        actNw.hasTransport(NetworkCapabilities.TRANSPORT_ETHERNET) -> true
+        else -> false
+    }
+    return result
 }
 
 //endregion

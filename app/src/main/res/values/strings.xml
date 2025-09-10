@@ -20,4 +20,5 @@
     <string name="no_connection">No connection</string>
     <string name="noInternetError">Could not connect to the internet. Check your connection</string>
     <string name="no_data">No data</string>
+    <string name="server_down">The data server is temporarily down. Try again later</string>
 </resources>

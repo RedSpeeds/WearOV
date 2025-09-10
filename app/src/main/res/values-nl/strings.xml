@@ -17,4 +17,5 @@
     <string name="no_connection">Geen verbinding</string>
     <string name="noInternetError">Kan niet verbinden met het internet. Controleer je verbinding</string>
     <string name="no_data">Geen informatie</string>
+    <string name="server_down">De data server is tijdelijk niet beschikbaar. Probeer later opnieuw</string>
 </resources>

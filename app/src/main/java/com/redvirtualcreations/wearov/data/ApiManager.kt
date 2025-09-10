@@ -6,20 +6,22 @@ import com.google.gson.Gson
 import com.google.gson.GsonBuilder
 import com.google.gson.JsonSyntaxException
 import com.redvirtualcreations.wearov.BuildConfig
+import com.redvirtualcreations.wearov.jsonObjects.NullDoubleTypeAdapter
 import com.redvirtualcreations.wearov.jsonObjects.VertrektijdenApi
 import com.redvirtualcreations.wearov.presentation.LatLon
 import okhttp3.OkHttpClient
 import okhttp3.Request
 import okio.IOException
-import java.lang.NumberFormatException
 
 class ApiManager {
-    private val gson: Gson = GsonBuilder().create()
+    private val gson: Gson = GsonBuilder().registerTypeAdapter(Double::class.java,
+        NullDoubleTypeAdapter()).create()
     private val httpClient: OkHttpClient = OkHttpClient()
     private val baseUrl = "https://api.vertrektijd.info/departures/_geo/"
     private val apiKey = BuildConfig.apiKey
     private var updating = false
     private var lastInfo: VertrektijdenApi? = null;
+    private var errorCount = 0
 
     fun getApiInfo(loc: LatLon): VertrektijdenApi? {
         if(updating) return lastInfo
@@ -36,25 +38,39 @@ class ApiManager {
                 return VertrektijdenApi(arrayListOf(), arrayListOf(), true)
             }
             jsonResponse = response.body?.string().toString()
+            Log.d("APIManager", "Raw response: $jsonResponse")
             jsonResponse = jsonResponse.replace(
                 "\"Station_Info\":[]",
                 "\"Station_Info\":{}"
             ) //FIXME Stupid fix in the event the API returns invalid data. Long term solution is finding a better API
-            Log.d("APIManager", "Raw response: $jsonResponse")
             response.close()
             val data = gson.fromJson(jsonResponse, VertrektijdenApi::class.java)
+            if(data.TRAIN.isNotEmpty()) {
+                if (data.TRAIN[0].StationInfo.StopCode=="" && errorCount<1) {
+                    return getApiInfo(loc) //Try again until its there
+                }
+            }
             lastInfo = data
+            errorCount=0;
             return data
         } catch (exception: IOException) {
             Log.d("VertrekAPI", "IO Exception", exception.cause)
-            VertrektijdenApi(arrayListOf(), arrayListOf(), true)
+            Log.d("VertrekAPI", "Error Count $errorCount")
+            if(errorCount>=1){
+                lastInfo = VertrektijdenApi(arrayListOf(), arrayListOf(), true)
+            }
+            errorCount++;
+            return lastInfo
         } catch (exception: JsonSyntaxException) {
             Log.e("VertrekAPI", "Encountered malformed JSON! RAW: $jsonResponse", exception.cause)
             FirebaseCrashlytics.getInstance().recordException(exception)
             VertrektijdenApi(arrayListOf(), arrayListOf(), true)
         }
         catch (exception: NumberFormatException){
-            Log.e("VertrekAPI", "API sent invalid strings")
+            Log.e("VertrekAPI", "API sent invalid strings", exception)
+            if(lastInfo == null) {
+                getApiInfo(loc); // Try again........
+            }
             return lastInfo
         }
         catch (exception: Exception) {
