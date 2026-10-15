@@ -98,16 +98,17 @@ import java.time.ZoneId
 import java.time.format.DateTimeFormatter
 import java.util.Date
 import java.util.concurrent.TimeUnit
+import kotlin.time.Duration.Companion.milliseconds
 
 class MainActivity : ComponentActivity() {
     private lateinit var locationCallback: LocationCallback
     lateinit var locationProvider: FusedLocationProviderClient
     var location: MutableLiveData<LatLon> = MutableLiveData()
 
-    private var isLocationListening = true;
+    private var isLocationListening = true
     var apiDataLive = location.switchMap { loc ->
         liveData(context = this.lifecycleScope.coroutineContext + Dispatchers.IO) {
-            val result = apiManager.getApiInfo(loc);
+            val result = apiManager.getApiInfo(loc)
             emit(result)
             if(result?.apiError ?: true){
                 stopLocationUpdates()
@@ -116,7 +117,6 @@ class MainActivity : ComponentActivity() {
     }
     private val apiManager = ApiManager()
     var isRefreshing = false
-    var hasLoaded = false
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         locationProvider = LocationServices.getFusedLocationProviderClient(this)
@@ -127,7 +127,7 @@ class MainActivity : ComponentActivity() {
         lifecycleScope.launch {
             while (apiDataLive.value == null) {
                 updateNow()
-                delay(3000)
+                delay(3000.milliseconds)
             }
         }
     }
@@ -212,6 +212,7 @@ private class HorizontalPagerState(state: PagerState) : PageIndicatorState {
 
 //region Compose
 
+@Suppress("UnusedVariable", "unused")
 @OptIn(ExperimentalPermissionsApi::class)
 @Composable
 fun WearApp(activity: MainActivity, onDismissed: () -> Unit = {}) {
@@ -298,7 +299,7 @@ fun WearApp(activity: MainActivity, onDismissed: () -> Unit = {}) {
                         }
                     }
                 } else {
-                    @Suppress("unused") val allPermissionsRevoked =
+                    val allPermissionsRevoked =
                         locationPermissionsState.permissions.size == locationPermissionsState.revokedPermissions.size
                     Alert(
                         contentPadding = PaddingValues(start = 10.dp, end = 10.dp, top = 24.dp, bottom = 52.dp),
